@@ -1,19 +1,35 @@
-.metadata/
-*local.properties*
-*DS_Store*
-.gradle
-*/bin/*
-*/gen/*
+# built application files
 *.apk
 *.ap_
+*.DS_Store
+.DS_Store
+
+# files for the dex VM
 *.dex
+
+# Java class files
 *.class
 
-.gradle/
-build/
-/*/build/
-proguard/
-*.log
-.idea
+# generated files
+bin/
+gen/
+
+# Local configuration file (sdk path, etc)
+local.properties
+
+# Eclipse project files
+.classpath
+.project
+
+# Android Studio
+.idea/
+.gradle
+/*/local.properties
+/*/out
+/*/*/build
+/*/*/production
 *.iml
-code/tmp
+*.iws
+*.ipr
+*~
+*.swp
