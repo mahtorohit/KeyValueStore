@@ -10,7 +10,10 @@ import android.database.sqlite.SQLiteStatement;
 import android.text.TextUtils;
 import android.util.Log;
 
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -61,27 +64,55 @@ public class KVStore {
     /**
      *
      * @param key : Key for KV Store
-     * @param val : value against the Key ( long )
+     * @param val : value against the Key ( int )
      */
-    public void putNumber(String key, long val) {
+    public void putInt(String key, int val) {
         if (TextUtils.isEmpty(key)) {
             Log.d("not alowed", "Empty data");
             return;
         }
-        try {
-            writeLock.lock();
-            openDB();
-            SQLiteStatement stmt = database.compileStatement("INSERT OR REPLACE INTO data(k,v) VALUES(?,?) ");
-            stmt.bindString(1, key);
-            stmt.bindLong(2, val);
-            stmt.executeInsert();
-            stmt.clearBindings();
-            Log.d("Insert on Thread"+ Thread.currentThread().getName() ,"Inserted new Key :"+key+ " with Value : "+val);
-        }finally{
-            closeDB();
-            writeLock.unlock();
-        }
+        this.sync(key , String.valueOf(val), KVUtil.DATATYPE.INT);
+    }
 
+    /**
+     *
+     * @param key : Key for KV Store
+     * @param val : value against the Key ( Long )
+     */
+    public void putLong(String key, long val) {
+        if (TextUtils.isEmpty(key)) {
+            Log.d("not alowed", "Empty data");
+            return;
+        }
+        this.sync(key , String.valueOf(val), KVUtil.DATATYPE.LONG);
+    }
+
+    /**
+     *
+     * @param key : Key for KV Store
+     * @param val : value against the Key ( Boolean )
+     */
+    public void putBool(String key, Boolean val) {
+        if (TextUtils.isEmpty(key)) {
+            Log.d("not alowed", "Empty data");
+            return;
+        }
+        this.sync(key , val.toString(), KVUtil.DATATYPE.BOOL);
+    }
+
+    /**
+     *
+     * @param key : Key for KV Store
+     * @param val : value against the Key ( Date )
+     */
+    public void putDate(String key, Date val) {
+        if (TextUtils.isEmpty(key) && val != null) {
+            Log.d("not alowed", "Empty data");
+            return;
+        }
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'");
+        String dateStr = sdf.format(val);
+        this.sync(key , dateStr , KVUtil.DATATYPE.DATE);
     }
 
     /**
@@ -94,20 +125,7 @@ public class KVStore {
             Log.d("not alowed", "Empty data");
             return;
         }
-        try {
-            writeLock.lock();
-            openDB();
-            SQLiteStatement stmt = database.compileStatement("INSERT OR REPLACE INTO data(k,v) VALUES(?,?) ");
-            stmt.bindString(1, key);
-            stmt.bindString(2, val);
-            stmt.executeInsert();
-            stmt.clearBindings();
-            Log.d("Insert on Thread"+ Thread.currentThread().getName() ,"Inserted new Key :"+key+ " with Value : "+val);
-        }finally{
-            closeDB();
-            writeLock.unlock();
-        }
-
+        this.sync(key,val, KVUtil.DATATYPE.STRING);
     }
 
     /**
@@ -127,9 +145,10 @@ public class KVStore {
                 if(TextUtils.isEmpty(data.getV())){
                     continue;
                 }
-                SQLiteStatement stmt = database.compileStatement("INSERT OR REPLACE INTO data(k,v) VALUES(?,?) ");
+                SQLiteStatement stmt = database.compileStatement("INSERT OR REPLACE INTO data(k,v,t) VALUES(?,?,?) ");
                 stmt.bindString(1, data.getK());
                 stmt.bindString(2, data.getV());
+                stmt.bindLong(3, KVUtil.DATATYPE.STRING.getValue());
                 stmt.executeInsert();
                 stmt.clearBindings();
                 Log.d("Insert on Thread "+ Thread.currentThread().getName() ,"Inserted new Key :"+data.getK()+ " with Value : "+data.getV());
@@ -142,38 +161,23 @@ public class KVStore {
         }
     }
 
-    ////// DELETE SECTION
-
     /**
      *
-     * @param key : Key name which should be deleted
+     * @param k : Key for KV Store
+     * @param v : value against the Key ( T )
+     * @param t : data type
      */
-    public void deleteValueForKey(String key){
-        if (TextUtils.isEmpty(key)) {
-            Log.d("not alowed", "Empty data");
-            return;
-        }
-        try{
+    private void sync(String k , String v , KVUtil.DATATYPE t){
+        try {
             writeLock.lock();
             openDB();
-            SQLiteStatement stmt = database.compileStatement("delete from data where k = ? ");
-            stmt.bindString(1, key);
-            stmt.execute();
-        }finally{
-            closeDB();
-            writeLock.unlock();
-        }
-    }
-
-    /**
-     *  Will delete all Keys
-     */
-    public void clearAllKeyValues(){
-        try{
-            writeLock.lock();
-            openDB();
-            SQLiteStatement stmt = database.compileStatement("delete from data");
-            stmt.execute();
+            SQLiteStatement stmt = database.compileStatement("INSERT OR REPLACE INTO data(k,v,t) VALUES(?,?,?) ");
+            stmt.bindString(1, k);
+            stmt.bindString(2, v);
+            stmt.bindLong(3, t.getValue());
+            stmt.executeInsert();
+            stmt.clearBindings();
+            Log.d("Insert on Thread"+ Thread.currentThread().getName() ,"Inserted new Key :"+k+ " with Value : "+v);
         }finally{
             closeDB();
             writeLock.unlock();
@@ -212,58 +216,117 @@ public class KVStore {
         }
     }
 
+
     /**
      *
      * @param key : Keys which need to be searched
+     * @param defaultVal : default expected values if key is not exist
      * @return : String values for the key
      */
-    public String getStringForKey(String key) {
+    public String getString(String key , String defaultVal) {
         if (TextUtils.isEmpty(key)) {
             Log.d("not alowed", "Empty data");
             return null;
         }
-        String value="";
-        try{
-            readLock.lock();
-            openDB();
-            String sql = "SELECT v FROM data where k = ('"+key+"')";
-            Cursor c = database.rawQuery(sql,null);
-            while (c.moveToFirst()) {
-                value =  c.getString(c.getColumnIndex("v"));
-                break;
-            }
-            Log.d("Getting on Thread "+ Thread.currentThread().getName() ," Reding for Keys :"+ key);
-            return value;
-        }finally{
-            closeDB();
-            readLock.unlock();
+        String val = this.getValue(key, KVUtil.DATATYPE.INT.STRING);
+       if(val != null){
+            return val;
         }
+        return defaultVal;
     }
 
     /**
      *
      * @param key : Keys which need to be searched
-     * @return : Long values for the key
+     * @param defaultVal : default expected values if key is not exist
+     * @return : boolean values for the key
      */
-    public Long getNumberForKey(String key) {
+    public boolean getBool(String key , Boolean defaultVal) {
         if (TextUtils.isEmpty(key)) {
             Log.d("not alowed", "Empty data");
-            return null;
+            return defaultVal;
         }
-        String value="";
+        String val = this.getValue(key, KVUtil.DATATYPE.INT.BOOL);
+        if(val != null){
+            return Boolean.parseBoolean(val);
+        }
+        return defaultVal;
+    }
+
+    /**
+     *
+     * @param key : Keys which need to be searched
+     * @param defaultVal : default expected values if key is not exist
+     * @return : int values for the key
+     */
+    public int getInt(String key , int defaultVal) {
+        if (TextUtils.isEmpty(key)) {
+            Log.d("not alowed", "Empty data");
+            return defaultVal;
+        }
+        String val = this.getValue(key, KVUtil.DATATYPE.INT.INT);
+        if(val != null){
+            return Integer.parseInt(val);
+        }
+        return defaultVal;
+    }
+
+    /**
+     *
+     * @param key : Keys which need to be searched
+     * @param defaultVal : default expected values if key is not exist
+     * @return : long values for the key
+     */
+    public long getLong(String key , long defaultVal) {
+        if (TextUtils.isEmpty(key)) {
+            Log.d("not alowed", "Empty data");
+            return defaultVal;
+        }
+        String val = this.getValue(key, KVUtil.DATATYPE.INT.LONG);
+        if(val != null){
+            return Integer.parseInt(val);
+        }
+        return defaultVal;
+    }
+
+    /**
+     *
+     * @param key : Keys which need to be searched
+     * @param defaultVal : default expected values if key is not exist
+     * @return : Date values for the key
+     */
+    public Date getDate(String key , Date defaultVal) {
+        if (TextUtils.isEmpty(key)) {
+            Log.d("not alowed", "Empty data");
+            return defaultVal;
+        }
+        String val = this.getValue(key, KVUtil.DATATYPE.INT.DATE);
+        if(val != null){
+            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'");
+            try {
+                return sdf.parse(val);
+            } catch(ParseException e){
+            }
+        }
+        return defaultVal;
+    }
+
+    /**
+     *
+     * @param K : Keys which need to be searched
+     * @param T : expected Data Type
+     * @return : Value for the key
+     */
+    private String getValue(String K, KVUtil.DATATYPE T){
         try{
             readLock.lock();
             openDB();
-            String sql = "SELECT v FROM data where k = ('"+key+"')";
+            String sql = "SELECT v FROM data where k = '"+K+"' and t = "+T.getValue();
             Cursor c = database.rawQuery(sql,null);
             while (c.moveToFirst()) {
-                value = c.getString(c.getColumnIndex("v"));
-                if(KVUtil.isNumeric(value)){
-                    return Long.parseLong(value);
-                }
-                break;
+                return c.getString(c.getColumnIndex("v"));
             }
-            Log.d("Getting on Thread "+ Thread.currentThread().getName() ," Reding for Keys :"+ key);
+            Log.d("Getting on Thread "+ Thread.currentThread().getName() ," Reding for Keys :"+ K);
             return null;
         }finally{
             closeDB();
@@ -271,8 +334,6 @@ public class KVStore {
         }
     }
 
-
-///////
 
     /**
      * To read number of keys it has
@@ -288,6 +349,48 @@ public class KVStore {
             readLock.unlock();
         }
     }
+
+
+
+    ////// DELETE SECTION
+    /**
+     *
+     * @param key : Key name which should be deleted
+     */
+    public void deleteValueForKey(String key){
+        if (TextUtils.isEmpty(key)) {
+            Log.d("not alowed", "Empty data");
+            return;
+        }
+        try{
+            writeLock.lock();
+            openDB();
+            SQLiteStatement stmt = database.compileStatement("delete from data where k = ? ");
+            stmt.bindString(1, key);
+            stmt.execute();
+        }finally{
+            closeDB();
+            writeLock.unlock();
+        }
+    }
+
+    /**
+     *  Will delete all Keys
+     */
+    public void clearAllKeyValues(){
+        try{
+            writeLock.lock();
+            openDB();
+            SQLiteStatement stmt = database.compileStatement("delete from data");
+            stmt.execute();
+        }finally{
+            closeDB();
+            writeLock.unlock();
+        }
+    }
+
+
+    //////// SQLiteOpenHelper
 
 
     static class DatabaseHelper extends SQLiteOpenHelper {
@@ -309,8 +412,7 @@ public class KVStore {
         @Override
         public void onCreate(SQLiteDatabase sqLiteDatabase) {
             String createSessionTable =
-                    "CREATE TABLE data (k TEXT primary key not null, " +
-                            "v TEXT)";
+                    "CREATE TABLE data (k TEXT primary key not null, v TEXT,t INTEGER) ";
             sqLiteDatabase.execSQL(createSessionTable);
         }
 

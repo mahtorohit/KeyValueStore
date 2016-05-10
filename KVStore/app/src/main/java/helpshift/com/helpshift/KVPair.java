@@ -15,7 +15,7 @@ public class KVPair {
     }
 
     long lk;
-    String v; // We can extend the scope from just String to more data types like int , long or data by putting this as Object and saving as BLOB in sqllite
+    String v;
 
     public KVPair(String k, String v) {
         this.k = k;

@@ -1,6 +1,5 @@
 package helpshift.com.helpshift;
 
-import android.content.SharedPreferences;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 
@@ -13,8 +12,7 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-
-        // Penetration test by using follwing Threads
+        // Penetration test by using following Threads
         Thread t1 = new Thread(r);
         t1.setName("T1");
         Thread t2 = new Thread(r2);
@@ -128,7 +126,7 @@ public class MainActivity extends AppCompatActivity {
     Runnable r7 =new Runnable() {
         @Override
         public void run() {
-            KVStore.getInstance(getApplicationContext()).getStringForKey("Key34");
+            KVStore.getInstance(getApplicationContext()).getString("Key34","defVal");
 
         }
     };
@@ -138,7 +136,7 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public void run() {
             KVPair dd = new KVPair("KeyAloneN", (long)4.5);
-            KVStore.getInstance(getApplicationContext()).putNumber(dd.getK(),dd.getLk());
+            KVStore.getInstance(getApplicationContext()).putLong(dd.getK(),dd.getLk());
 
         }
     };
@@ -146,7 +144,7 @@ public class MainActivity extends AppCompatActivity {
     Runnable r9 =new Runnable() {
         @Override
         public void run() {
-            KVStore.getInstance(getApplicationContext()).getNumberForKey("KeyAloneN");
+            KVStore.getInstance(getApplicationContext()).getLong("KeyAloneN",(long)222);
 
         }
     };

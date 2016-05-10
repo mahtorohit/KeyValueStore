@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/HelpShift.iml" filepath="$PROJECT_DIR$/HelpShift.iml" />
+      <module fileurl="file://$PROJECT_DIR$/KVStore.iml" filepath="$PROJECT_DIR$/KVStore.iml" />
       <module fileurl="file://$PROJECT_DIR$/app/app.iml" filepath="$PROJECT_DIR$/app/app.iml" />
     </modules>
   </component>
